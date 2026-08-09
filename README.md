@@ -1,0 +1,1 @@
+single-file QuickPOS System built with modern HTML5, Tailwind CSS, and Vanilla JavaScript. It features an interactive product catalog, live cart management, dynamic calculations (subtotal, tax, grand total), and a checkout simulator.
