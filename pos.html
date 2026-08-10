@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuickPOS India - Point of Sale System</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#fff7ed',
+                            500: '#f97316',
+                            600: '#ea580c',
+                            700: '#c2410c',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans antialiased h-screen flex flex-col overflow-hidden">
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-slate-900 text-white shadow-md px-6 py-3 flex justify-between items-center z-10">
+        <div class="flex items-center space-x-3">
+            <div class="bg-brand-600 p-2 rounded-lg text-white">
+                <i class="fa-solid fa-store text-xl"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg leading-tight">QuickPOS India</h1>
+                <p class="text-xs text-slate-400">Namaste, <span id="cashier-name">Rahul Sharma</span></p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-4">
+            <span class="text-sm bg-slate-800 px-3 py-1.5 rounded-full border border-slate-700">
+                <i class="fa-regular fa-calendar-days text-brand-500 mr-1.5"></i> <span id="current-date"></span>
+            </span>
+            <button onclick="clearCart()" class="text-sm bg-rose-600/20 text-rose-400 hover:bg-rose-600 hover:text-white px-3 py-1.5 rounded-lg transition border border-rose-600/35">
+                <i class="fa-solid fa-trash-can mr-1"></i> Clear Cart
+            </button>
+        </div>
+    </header>
+
+    <!-- Main POS Layout -->
+    <main class="flex-1 flex overflow-hidden">
+        
+        <!-- Left Column: Product Catalog -->
+        <section class="flex-1 flex flex-col p-4 overflow-hidden border-r border-slate-200">
+            <!-- Search & Categories -->
+            <div class="mb-4 space-y-3">
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </span>
+                    <input type="text" id="search-input" oninput="filterProducts()" placeholder="Search Indian snacks, beverages, meals..." 
+                        class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent text-sm shadow-sm">
+                </div>
+                <!-- Category Filter Pills -->
+                <div class="flex space-x-2 overflow-x-auto pb-1" id="category-filters">
+                    <button onclick="filterCategory('All')" class="category-btn px-4 py-1.5 bg-slate-900 text-white text-xs font-medium rounded-full whitespace-nowrap shadow-sm transition">All Items</button>
+                    <button onclick="filterCategory('Beverages')" class="category-btn px-4 py-1.5 bg-white text-slate-600 hover:bg-slate-200 text-xs font-medium rounded-full whitespace-nowrap border border-slate-300 transition">Beverages</button>
+                    <button onclick="filterCategory('Snacks')" class="category-btn px-4 py-1.5 bg-white text-slate-600 hover:bg-slate-200 text-xs font-medium rounded-full whitespace-nowrap border border-slate-300 transition">Snacks & Chaat</button>
+                    <button onclick="filterCategory('Meals')" class="category-btn px-4 py-1.5 bg-white text-slate-600 hover:bg-slate-200 text-xs font-medium rounded-full whitespace-nowrap border border-slate-300 transition">Meals</button>
+                    <button onclick="filterCategory('Sweets')" class="category-btn px-4 py-1.5 bg-white text-slate-600 hover:bg-slate-200 text-xs font-medium rounded-full whitespace-nowrap border border-slate-300 transition">Sweets</button>
+                </div>
+            </div>
+
+            <!-- Product Grid -->
+            <div class="flex-1 overflow-y-auto pr-1">
+                <div id="product-grid" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <!-- Rendered via JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Column: Current Cart & Checkout -->
+        <section class="w-full md:w-[400px] xl:w-[440px] bg-white flex flex-col shadow-xl z-0">
+            <!-- Cart Header -->
+            <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                <h2 class="font-bold text-slate-800 flex items-center">
+                    <i class="fa-solid fa-receipt text-brand-600 mr-2"></i> Current Order (Order #<span id="order-token">101</span>)
+                </h2>
+                <span id="cart-count-badge" class="bg-brand-50 text-brand-600 text-xs font-bold px-2.5 py-1 rounded-full border border-brand-500/30">0 items</span>
+            </div>
+
+            <!-- Cart Items List -->
+            <div class="flex-1 overflow-y-auto p-4 space-y-3 divide-y divide-slate-100" id="cart-items-container">
+                <!-- Empty State -->
+                <div id="empty-cart" class="h-full flex flex-col items-center justify-center text-slate-400 space-y-2 py-12">
+                    <i class="fa-solid fa-basket-shopping text-4xl text-slate-300"></i>
+                    <p class="text-sm font-medium">Cart is empty</p>
+                    <p class="text-xs text-slate-400">Select items to generate Bill / KOT</p>
+                </div>
+            </div>
+
+            <!-- Cart Totals & Checkout Actions -->
+            <div class="p-4 bg-slate-50 border-t border-slate-200 space-y-3">
+                <div class="space-y-1.5 text-sm">
+                    <div class="flex justify-between text-slate-600">
+                        <span>Subtotal</span>
+                        <span id="subtotal-amount" class="font-medium">₹0.00</span>
+                    </div>
+                    <div class="flex justify-between text-slate-600">
+                        <span>GST (5% Combined)</span>
+                        <span id="tax-amount" class="font-medium">₹0.00</span>
+                    </div>
+                    <div class="flex justify-between text-lg font-bold text-slate-900 pt-2 border-t border-slate-200">
+                        <span>Grand Total</span>
+                        <span id="grand-total" class="text-brand-600">₹0.00</span>
+                    </div>
+                </div>
+
+                <button onclick="openCheckoutModal()" id="checkout-btn" disabled
+                    class="w-full bg-brand-600 hover:bg-brand-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-xl shadow-md transition flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-indian-rupee-sign"></i>
+                    <span>Proceed to Payment</span>
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Checkout Modal Simulator -->
+    <div id="checkout-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all">
+            <div class="bg-slate-900 text-white px-6 py-4 flex justify-between items-center">
+                <h3 class="font-bold text-lg"><i class="fa-solid fa-wallet mr-2 text-brand-500"></i>Payment Counter</h3>
+                <button onclick="closeCheckoutModal()" class="text-slate-400 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-5">
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex justify-between items-center">
+                    <div>
+                        <p class="text-xs text-slate-500 uppercase tracking-wider font-semibold">Total Payable</p>
+                        <p id="modal-due-amount" class="text-2xl font-black text-slate-900">₹0.00</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-xs bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full font-medium">GST Inclusive</span>
+                    </div>
+                </div>
+
+                <!-- Payment Method Select -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Select Payment Mode</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button type="button" onclick="setPaymentMethod('UPI')" id="pm-upi" class="payment-method-btn py-2.5 px-3 border-2 border-brand-500 bg-brand-50 text-brand-700 font-semibold rounded-xl text-xs flex flex-col items-center justify-center space-y-1 transition">
+                            <i class="fa-solid fa-qrcode text-base"></i> UPI / QR
+                        </button>
+                        <button type="button" onclick="setPaymentMethod('Cash')" id="pm-cash" class="payment-method-btn py-2.5 px-3 border-2 border-slate-200 bg-white text-slate-600 font-semibold rounded-xl text-xs flex flex-col items-center justify-center space-y-1 transition hover:border-slate-300">
+                            <i class="fa-solid fa-money-bill-wave text-base"></i> Cash
+                        </button>
+                        <button type="button" onclick="setPaymentMethod('Card')" id="pm-card" class="payment-method-btn py-2.5 px-3 border-2 border-slate-200 bg-white text-slate-600 font-semibold rounded-xl text-xs flex flex-col items-center justify-center space-y-1 transition hover:border-slate-300">
+                            <i class="fa-solid fa-credit-card text-base"></i> Card / Wallets
+                        </button>
+                    </div>
+                </div>
+
+                <!-- UPI simulated screen -->
+                <div id="upi-container" class="p-4 bg-orange-50 border border-orange-200 rounded-xl text-center space-y-2">
+                    <p class="text-xs font-semibold text-orange-800">Scan QR via GPay / PhonePe / Paytm</p>
+                    <div class="bg-white inline-block p-3 rounded-lg shadow-sm border border-orange-100">
+                        <i class="fa-solid fa-qrcode text-5xl text-slate-800"></i>
+                    </div>
+                    <p class="text-[11px] text-slate-500">UPI ID: quickpos@oksbi</p>
+                </div>
+
+                <!-- Cash Tendered Input -->
+                <div id="cash-input-container" class="space-y-1.5" style="display: none;">
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider">Cash Received from Customer</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400 font-bold">₹</span>
+                        <input type="number" id="cash-tendered" oninput="calculateChange()" placeholder="0.00" 
+                            class="w-full pl-8 pr-4 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm font-semibold">
+                    </div>
+                    <div class="flex justify-between items-center text-xs pt-1">
+                        <span class="text-slate-500">Change to Return:</span>
+                        <span id="change-due" class="font-bold text-emerald-600 text-sm">₹0.00</span>
+                    </div>
+                </div>
+
+                <button onclick="processCompleteOrder()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition flex items-center justify-center space-x-2 text-sm">
+                    <i class="fa-solid fa-check text-base"></i>
+                    <span>Confirm & Print Bill</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Receipt Modal / Printable View -->
+    <div id="receipt-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="p-6 overflow-y-auto space-y-4 font-mono text-xs" id="receipt-content">
+                <!-- Generated Receipt content goes here -->
+            </div>
+            <div class="p-4 bg-slate-50 border-t border-slate-200 flex space-x-2">
+                <button onclick="closeReceiptModal()" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold py-2.5 rounded-xl transition text-xs">
+                    Close
+                </button>
+                <button onclick="window.print()" class="flex-1 bg-brand-600 hover:bg-brand-700 text-white font-semibold py-2.5 rounded-xl transition text-xs flex items-center justify-center space-x-1.5">
+                    <i class="fa-solid fa-print"></i>
+                    <span>Print Bill</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Indian Product Catalog Database
+        const products = [
+            { id: 1, name: 'Masala Chai', category: 'Beverages', price: 20, icon: 'fa-mug-hot', color: 'bg-amber-100 text-amber-700' },
+            { id: 2, name: 'South Indian Filter Coffee', category: 'Beverages', price: 30, icon: 'fa-coffee', color: 'bg-orange-100 text-orange-800' },
+            { id: 3, name: 'Cold Badam Milk', category: 'Beverages', price: 50, icon: 'fa-glass-water', color: 'bg-yellow-100 text-yellow-800' },
+            { id: 4, name: 'Sweet Lassi', category: 'Beverages', price: 45, icon: 'fa-cup-straw', color: 'bg-stone-100 text-stone-700' },
+            { id: 5, name: 'Punjabi Samosa (2 pcs)', category: 'Snacks', price: 35, icon: 'fa-bowl-food', color: 'bg-amber-100 text-amber-900' },
+            { id: 6, name: 'Mumbai Vada Pav', category: 'Snacks', price: 25, icon: 'fa-burger', color: 'bg-yellow-100 text-yellow-700' },
+            { id: 7, name: 'Masala Dosa', category: 'Meals', price: 90, icon: 'fa-utensils', color: 'bg-orange-100 text-orange-700' },
+            { id: 8, name: 'Chole Bhature', category: 'Meals', price: 120, icon: 'fa-plate-wheat', color: 'bg-amber-200 text-amber-900' },
+            { id: 9, name: 'Pani Puri (6 pcs)', category: 'Snacks', price: 40, icon: 'fa-circle', color: 'bg-emerald-100 text-emerald-700' },
+            { id: 10, name: 'Paneer Tikka Roll', category: 'Meals', price: 110, icon: 'fa-hotdog', color: 'bg-red-100 text-red-700' },
+            { id: 11, name: 'Gulab Jamun (2 pcs)', category: 'Sweets', price: 40, icon: 'fa-cookie', color: 'bg-amber-100 text-amber-800' },
+            { id: 12, name: 'Kesar Jalebi', category: 'Sweets', price: 50, icon: 'fa-ring', color: 'bg-orange-200 text-orange-800' }
+        ];
+
+        let cart = [];
+        let selectedCategory = 'All';
+        let currentPaymentMethod = 'UPI';
+        let orderNumber = 101;
+        const GST_RATE = 0.05; // 5% GST standard for restaurants
+
+        // Initialization
+        document.addEventListener('DOMContentLoaded', () => {
+            updateDate();
+            renderProducts(products);
+            renderCart();
+        });
+
+        function updateDate() {
+            const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
+            document.getElementById('current-date').innerText = new Date().toLocaleDateString('en-IN', options);
+        }
+
+        // Render Product Catalog
+        function renderProducts(itemsToRender) {
+            const grid = document.getElementById('product-grid');
+            grid.innerHTML = '';
+
+            if (itemsToRender.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full text-center py-12 text-slate-400">
+                        <i class="fa-solid fa-box-open text-3xl mb-2"></i>
+                        <p class="text-sm">No items found</p>
+                    </div>
+                `;
+                return;
+            }
+
+            itemsToRender.forEach(product => {
+                const card = document.createElement('div');
+                card.className = `bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-brand-500 cursor-pointer transition flex flex-col justify-between group`;
+                card.onclick = () => addToCart(product.id);
+                
+                card.innerHTML = `
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="w-10 h-10 rounded-xl ${product.color} flex items-center justify-center text-lg group-hover:scale-110 transition">
+                            <i class="fa-solid ${product.icon}"></i>
+                        </div>
+                        <span class="text-xs font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">${product.category}</span>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-slate-800 text-sm mb-1 line-clamp-1">${product.name}</h3>
+                        <p class="text-brand-600 font-bold text-sm">₹${product.price.toFixed(2)}</p>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // Filter Logic
+        function filterCategory(category) {
+            selectedCategory = category;
+            
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                if (btn.innerText.includes(category) || (category === 'All' && btn.innerText.includes('All'))) {
+                    btn.className = "category-btn px-4 py-1.5 bg-slate-900 text-white text-xs font-medium rounded-full whitespace-nowrap shadow-sm transition";
+                } else {
+                    btn.className = "category-btn px-4 py-1.5 bg-white text-slate-600 hover:bg-slate-200 text-xs font-medium rounded-full whitespace-nowrap border border-slate-300 transition";
+                }
+            });
+
+            applyFilters();
+        }
+
+        function filterProducts() {
+            applyFilters();
+        }
+
+        function applyFilters() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            let filtered = products;
+
+            if (selectedCategory !== 'All') {
+                filtered = filtered.filter(p => p.category === selectedCategory);
+            }
+
+            if (query.trim() !== '') {
+                filtered = filtered.filter(p => p.name.toLowerCase().includes(query));
+            }
+
+            renderProducts(filtered);
+        }
+
+        // Cart Management
+        function addToCart(productId) {
+            const product = products.find(p => p.id === productId);
+            const existingItem = cart.find(item => item.id === productId);
+
+            if (existingItem) {
+                existingItem.quantity++;
+            } else {
+                cart.push({ ...product, quantity: 1 });
+            }
+            renderCart();
+        }
+
+        function updateQuantity(productId, change) {
+            const item = cart.find(item => item.id === productId);
+            if (!item) return;
+
+            item.quantity += change;
+            if (item.quantity <= 0) {
+                cart = cart.filter(i => i.id !== productId);
+            }
+            renderCart();
+        }
+
+        function removeFromCart(productId) {
+            cart = cart.filter(item => item.id !== productId);
+            renderCart();
+        }
+
+        function clearCart() {
+            cart = [];
+            renderCart();
+        }
+
+        function renderCart() {
+            const container = document.getElementById('cart-items-container');
+            const badge = document.getElementById('cart-count-badge');
+            const checkoutBtn = document.getElementById('checkout-btn');
+            
+            container.innerHTML = '';
+
+            const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+            badge.innerText = `${totalItems} item${totalItems === 1 ? '' : 's'}`;
+
+            if (cart.length === 0) {
+                container.innerHTML = `
+                    <div class="h-full flex flex-col items-center justify-center text-slate-400 space-y-2 py-12">
+                        <i class="fa-solid fa-basket-shopping text-4xl text-slate-300"></i>
+                        <p class="text-sm font-medium">Cart is empty</p>
+                        <p class="text-xs text-slate-400">Select items to generate Bill / KOT</p>
+                    </div>
+                `;
+                checkoutBtn.disabled = true;
+            } else {
+                checkoutBtn.disabled = false;
+                cart.forEach(item => {
+                    const row = document.createElement('div');
+                    row.className = 'py-3 flex items-center justify-between first:pt-0';
+                    row.innerHTML = `
+                        <div class="flex-1 pr-2">
+                            <h4 class="text-xs font-bold text-slate-800 line-clamp-1">${item.name}</h4>
+                            <p class="text-xs text-brand-600 font-semibold">₹${(item.price * item.quantity).toFixed(2)}</p>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <div class="flex items-center border border-slate-200 rounded-lg bg-slate-50">
+                                <button onclick="updateQuantity(${item.id}, -1)" class="w-7 h-7 flex items-center justify-center text-slate-600 hover:bg-slate-200 rounded-l-lg transition">
+                                    <i class="fa-solid fa-minus text-[10px]"></i>
+                                </button>
+                                <span class="w-7 text-center text-xs font-bold text-slate-800">${item.quantity}</span>
+                                <button onclick="updateQuantity(${item.id}, 1)" class="w-7 h-7 flex items-center justify-center text-slate-600 hover:bg-slate-200 rounded-r-lg transition">
+                                    <i class="fa-solid fa-plus text-[10px]"></i>
+                                </button>
+                            </div>
+                            <button onclick="removeFromCart(${item.id})" class="text-slate-400 hover:text-rose-600 p-1 transition">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
+                    `;
+                    container.appendChild(row);
+                });
+            }
+
+            updateTotals();
+        }
+
+        function updateTotals() {
+            const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const tax = subtotal * GST_RATE;
+            const grandTotal = subtotal + tax;
+
+            document.getElementById('subtotal-amount').innerText = `₹${subtotal.toFixed(2)}`;
+            document.getElementById('tax-amount').innerText = `₹${tax.toFixed(2)}`;
+            document.getElementById('grand-total').innerText = `₹${grandTotal.toFixed(2)}`;
+        }
+
+        // Checkout Modal Actions
+        function openCheckoutModal() {
+            const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const grandTotal = subtotal + (subtotal * GST_RATE);
+            
+            document.getElementById('modal-due-amount').innerText = `₹${grandTotal.toFixed(2)}`;
+            document.getElementById('cash-tendered').value = grandTotal.toFixed(2);
+            calculateChange();
+            
+            document.getElementById('checkout-modal').classList.remove('hidden');
+            document.getElementById('checkout-modal').classList.add('flex');
+        }
+
+        function closeCheckoutModal() {
+            document.getElementById('checkout-modal').classList.remove('flex');
+            document.getElementById('checkout-modal').classList.add('hidden');
+        }
+
+        function setPaymentMethod(method) {
+            currentPaymentMethod = method;
+            document.querySelectorAll('.payment-method-btn').forEach(btn => {
+                btn.className = "payment-method-btn py-2.5 px-3 border-2 border-slate-200 bg-white text-slate-600 font-semibold rounded-xl text-xs flex flex-col items-center justify-center space-y-1 transition hover:border-slate-300";
+            });
+            
+            const activeBtn = document.getElementById(`pm-${method.toLowerCase()}`);
+            activeBtn.className = "payment-method-btn py-2.5 px-3 border-2 border-brand-500 bg-brand-50 text-brand-700 font-semibold rounded-xl text-xs flex flex-col items-center justify-center space-y-1 transition";
+
+            const cashContainer = document.getElementById('cash-input-container');
+            const upiContainer = document.getElementById('upi-container');
+
+            if (method === 'Cash') {
+                cashContainer.style.display = 'block';
+                upiContainer.style.display = 'none';
+            } else if (method === 'UPI') {
+                cashContainer.style.display = 'none';
+                upiContainer.style.display = 'block';
+            } else {
+                cashContainer.style.display = 'none';
+                upiContainer.style.display = 'none';
+            }
+        }
+
+        function calculateChange() {
+            const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const grandTotal = subtotal + (subtotal * GST_RATE);
+            const tendered = parseFloat(document.getElementById('cash-tendered').value) || 0;
+            const change = tendered - grandTotal;
+
+            const changeEl = document.getElementById('change-due');
+            if (change >= 0) {
+                changeEl.innerText = `₹${change.toFixed(2)}`;
+                changeEl.className = "font-bold text-emerald-600 text-sm";
+            } else {
+                changeEl.innerText = `Insufficient (₹${Math.abs(change).toFixed(2)})`;
+                changeEl.className = "font-bold text-rose-600 text-sm";
+            }
+        }
+
+        function processCompleteOrder() {
+            const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const tax = subtotal * GST_RATE;
+            const grandTotal = subtotal + tax;
+
+            if (currentPaymentMethod === 'Cash') {
+                const tendered = parseFloat(document.getElementById('cash-tendered').value) || 0;
+                if (tendered < grandTotal) {
+                    alert('Cash tendered is less than the grand total!');
+                    return;
+                }
+            }
+
+            closeCheckoutModal();
+            generateReceipt(subtotal, tax, grandTotal);
+            
+            // Increment order number for next customer
+            orderNumber++;
+            document.getElementById('order-token').innerText = orderNumber;
+
+            // Clear cart post transaction
+            cart = [];
+            renderCart();
+        }
+
+        function generateReceipt(subtotal, tax, grandTotal) {
+            const receiptContent = document.getElementById('receipt-content');
+            const now = new Date().toLocaleString('en-IN');
+
+            let itemsHtml = '';
+            cart.forEach(item => {
+                itemsHtml += `
+                    <div class="flex justify-between py-1 border-b border-dashed border-slate-200">
+                        <span>${item.quantity}x ${item.name}</span>
+                        <span>₹${(item.price * item.quantity).toFixed(2)}</span>
+                    </div>
+                `;
+            });
+
+            receiptContent.innerHTML = `
+                <div class="text-center space-y-1 pb-3 border-b border-slate-300">
+                    <h2 class="font-bold text-sm uppercase tracking-widest">Sharma Ji Rasoi & Cafe</h2>
+                    <p class="text-[10px] text-slate-500">Shop No. 4, Connaught Place, New Delhi</p>
+                    <p class="text-[10px] text-slate-500">GSTIN: 07AABCS1429B1Z5</p>
+                    <p class="text-[10px] text-slate-500 font-bold">Token/Order #: ${orderNumber}</p>
+                    <p class="text-[10px] text-slate-500">${now}</p>
+                </div>
+                <div class="py-2 space-y-1">
+                    ${itemsHtml}
+                </div>
+                <div class="pt-2 border-t border-slate-300 space-y-1 text-slate-700">
+                    <div class="flex justify-between">
+                        <span>Subtotal</span>
+                        <span>₹${subtotal.toFixed(2)}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>GST (5%)</span>
+                        <span>₹${tax.toFixed(2)}</span>
+                    </div>
+                    <div class="flex justify-between font-bold text-slate-900 text-sm pt-1 border-t border-slate-200">
+                        <span>GRAND TOTAL</span>
+                        <span>₹${grandTotal.toFixed(2)}</span>
+                    </div>
+                    <div class="flex justify-between pt-1">
+                        <span>Payment Mode</span>
+                        <span class="font-bold">${currentPaymentMethod}</span>
+                    </div>
+                </div>
+                <div class="text-center pt-4 text-[10px] text-slate-400 space-y-1">
+                    <p>Dhanyawad! Please visit again.</p>
+                    <p>FSSAI Lic No: 21221008000123</p>
+                </div>
+            `;
+
+            const receiptModal = document.getElementById('receipt-modal');
+            receiptModal.classList.remove('hidden');
+            receiptModal.classList.add('flex');
+        }
+
+        function closeReceiptModal() {
+            const receiptModal = document.getElementById('receipt-modal');
+            receiptModal.classList.remove('flex');
+            receiptModal.classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
